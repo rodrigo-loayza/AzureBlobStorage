@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <title>Blobs</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
+              integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
+              crossorigin="anonymous">
+    </head>
+    <body class="container my-4">
+        <h4>Lista de Blobs de Azure</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Fecha creación</th>
+                    <th>Contenedor</th>
+                    <th>Tamaño</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="blob : ${listaBlobs}">
+                    <td th:text="${blob.name}"></td>
+                    <td th:text="${blob.properties.createdTime}"></td>
+                    <td th:text="${blob.properties.contentType}"></td>
+                    <td th:text="|${blob.properties.length / 1000} KB|"></td>
+                    <td><a class="btn btn-danger" th:href="@{'/blob/borrar?name=' + ${blob.name}}">Borrar</a></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Lista de Imagenes de la DB</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>Descripcion</th>
+                    <th>URL guardada</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="img : ${listaImages}">
+                    <td><img th:src="${img.images}" alt="testimage" style="max-width: 100px"></td>
+                    <td th:text="${img.descripcion}"></td>
+                    <td th:text="${img.images}"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <a class="btn btn-primary my-3" th:href="@{/blob/frm}">Subir Imagen</a>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+                integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+                crossorigin="anonymous"></script>
+    </body>
+</html>
