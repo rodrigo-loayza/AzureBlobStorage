@@ -22,9 +22,9 @@
             <tbody>
                 <tr th:each="blob : ${listaBlobs}">
                     <td th:text="${blob.name}"></td>
-                    <td th:text="${blob.properties.createdTime}"></td>
+                    <td th:text="${blob.properties.creationTime}"></td>
                     <td th:text="${blob.properties.contentType}"></td>
-                    <td th:text="|${blob.properties.length / 1000} KB|"></td>
+                    <td th:text="|${blob.properties.contentLength / 1000} KB|"></td>
                     <td><a class="btn btn-danger" th:href="@{'/blob/borrar?name=' + ${blob.name}}">Borrar</a></td>
                 </tr>
             </tbody>
