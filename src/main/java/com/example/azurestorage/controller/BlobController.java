@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/blob")
@@ -35,20 +36,21 @@ public class BlobController {
 
     @PostMapping("/guardar")
     public String guardar(@RequestParam("file") MultipartFile file, Image image) throws IOException {
-        if (file.isEmpty()) {
-            System.out.println("Error al cargar imagen, seleccione el archivo");
+        String imgUrl = azureBlobStorageService.subirArchivo(file, "img_" + UUID.randomUUID());
+        if (imgUrl != null) {
+            image.setImages(imgUrl);
+            imageRepository.save(image);
+            return "redirect:/blob/lista";
+        } else {
+            System.out.println("Error al subir la imagen.");
             return "redirect:/error";
         }
-        //TODO: Validar que se suba un contentype de imagen para que el link display y no descargue.
-        image.setImages(azureBlobStorageService.subirArchivo(file, "imagen_" + System.currentTimeMillis()));
-        imageRepository.save(image);
-        return "redirect:/blob/lista";
     }
 
     @GetMapping("/borrar")
     public String borrar(@RequestParam("name") String name) {
         if (azureBlobStorageService.borrarArchivoPorNombre(name)) {
-            //TODO: Aplicar también el borrado en DB.
+
             return "redirect:/blob/lista";
         } else {
             return "redirect:/error";
