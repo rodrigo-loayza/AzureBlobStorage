@@ -41,13 +41,14 @@ public class BlobController {
                           @RequestParam(value = "my_files[]", required = false) MultipartFile[] multipartFiles) throws IOException {
         String fileName = "img_" + UUID.randomUUID();
         BlobData blobData = new BlobData();
-        if (azureBlobStorageService.uploadImage(file, blobData, fileName, true, "teatro")) {
+        if (azureBlobStorageService.uploadImage(file, blobData, fileName, true, "obra")) {
             image.setImages(blobData.getThumbnailUrl());
             imageRepository.save(image);
-            return "redirect:/blob/lista";
         } else {
-            return "redirect:/error";
+            System.out.println("ERROR EN LA SUBIDA");
         }
+
+        return "redirect:/blob/lista";
 
 //        if (imgUrl != null) {
 //            image.setImages(imgUrl);

@@ -28,8 +28,11 @@ import java.util.*;
 @Service
 public class AzureBlobStorageService {
 
-    private static final int[] teatroSize = {300, 300};
-    private static final int[] obraSize = {180, 600};
+    private static final int[] teatroThumbSize = {300, 300};
+    private static final int[] obraThumbSize = {300, 300};
+
+    private static final int[] teatroMinSize = {200, 200};
+    private static final int[] obraMinSize = {200, 200};
 
     /* Parametros de conexion, los obtiene del application.properties */
     @Value("${spring.cloud.azure.storage.blob.connection-string}")
@@ -176,6 +179,7 @@ public class AzureBlobStorageService {
         BlobContainerClient blobContainer = containerClient();
         if (blobContainer != null && file != null) {
             if (!isImage(file)) return false;
+            if (!isValidSize(file, sizeOption)) return false;
 
             String fileExtension = getFileExtension(file).orElse(null);
             if (fileExtension == null) return false;
@@ -185,10 +189,10 @@ public class AzureBlobStorageService {
                 if (genThumb) {
                     switch (sizeOption) {
                         case "teatro":
-                            if (!genThumbnail(blobContainer, file, blobData, teatroSize)) return false;
+                            if (!genThumbnail(blobContainer, file, blobData, teatroThumbSize)) return false;
                             break;
                         case "obra":
-                            if (!genThumbnail(blobContainer, file, blobData, obraSize)) return false;
+                            if (!genThumbnail(blobContainer, file, blobData, obraThumbSize)) return false;
                             break;
                         default:
                             return false;
@@ -216,6 +220,43 @@ public class AzureBlobStorageService {
      */
     public boolean isImage(MultipartFile file) {
         return Arrays.asList("image/jpg", "image/jpeg", "image/png").contains(file.getContentType());
+    }
+
+    /*
+     * Valida el aspect ratio y tamaño minimo de la imagen
+     */
+    public boolean isValidSize(MultipartFile file, String option) {
+        try {
+            BufferedImage img = ImageIO.read(file.getInputStream());
+            int width = img.getWidth();
+            int height = img.getHeight();
+
+            int[] minSize;
+            boolean validObraRatio = false;
+            switch (option) {
+                case "teatro":
+                    minSize = teatroMinSize;
+                    break;
+                case "obra":
+                    minSize = obraMinSize;
+                    double ratio = (double) width/height;
+                    validObraRatio = 0.6 <= ratio && ratio <= 0.714;
+                    break;
+                default:
+                    return false;
+            }
+
+            if (width >= minSize[0] && height >= minSize[1]) {
+                if (option.equals("obra")) return validObraRatio;
+                return true;
+            } else {
+                return false;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /*
