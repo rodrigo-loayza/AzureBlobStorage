@@ -6,6 +6,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet"
               integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
               crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
     </head>
     <body class="container my-4">
         <h4>Lista de Blobs de Azure</h4>
@@ -37,13 +38,15 @@
                     <th>Imagen</th>
                     <th>Descripcion</th>
                     <th>URL guardada</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
                 <tr th:each="img : ${listaImages}">
-                    <td><img th:src="${img.images}" alt="testimage" style="max-width: 100px"></td>
+                    <td><img th:src="${img.images}" alt="testimage" style="max-width: 500px"></td>
                     <td th:text="${img.descripcion}"></td>
                     <td th:text="${img.images}"></td>
+                    <td><a th:href="@{'/blob/deleteFromDB?id=' + ${img.id}}" class="btn btn-warning"><i class="bi bi-archive-fill"></i></a></td>
                 </tr>
             </tbody>
         </table>

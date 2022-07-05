@@ -1,5 +1,6 @@
 package com.example.azurestorage.controller;
 
+import com.example.azurestorage.dto.BlobData;
 import com.example.azurestorage.entity.Image;
 import com.example.azurestorage.repository.ImageRepository;
 import com.example.azurestorage.service.AzureBlobStorageService;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 
 @Controller
@@ -18,10 +18,10 @@ import java.util.UUID;
 public class BlobController {
 
     @Autowired
-    AzureBlobStorageService azureBlobStorageService;
+    private AzureBlobStorageService azureBlobStorageService;
 
     @Autowired
-    ImageRepository imageRepository;
+    private ImageRepository imageRepository;
 
     @GetMapping("/lista")
     public String readBlobFile(Model model) {
@@ -36,9 +36,19 @@ public class BlobController {
     }
 
     @PostMapping("/guardar")
-    public String guardar(@RequestParam("file") MultipartFile file, Image image,
-                          @RequestParam("my_file[]") MultipartFile[] multipartFiles, @RequestParam("jajaja") List<String> listatest) throws IOException {
-//        String imgUrl = azureBlobStorageService.subirArchivo(file, "img_" + UUID.randomUUID());
+    public String guardar(Image image,
+                          @RequestParam(value = "file", required = false) MultipartFile file,
+                          @RequestParam(value = "my_files[]", required = false) MultipartFile[] multipartFiles) throws IOException {
+        String fileName = "img_" + UUID.randomUUID();
+        BlobData blobData = new BlobData();
+        if (azureBlobStorageService.subirArchivo(file, blobData, fileName)) {
+            image.setImages(blobData.getThumbnailUrl());
+            imageRepository.save(image);
+            return "redirect:/blob/lista";
+        } else {
+            return "redirect:/error";
+        }
+
 //        if (imgUrl != null) {
 //            image.setImages(imgUrl);
 //            imageRepository.save(image);
@@ -51,18 +61,21 @@ public class BlobController {
 //            System.out.println("Subiendo " + f.getOriginalFilename() + "...");
 //            azureBlobStorageService.subirArchivo(f, "img_" + UUID.randomUUID());
 //        }
-        for (String a : listatest) System.out.println(a);
 
-        return "redirect:/blob/lista";
     }
 
     @GetMapping("/borrar")
     public String borrar(@RequestParam("name") String name) {
         if (azureBlobStorageService.borrarArchivoPorNombre(name)) {
-
             return "redirect:/blob/lista";
         } else {
             return "redirect:/error";
         }
+    }
+
+    @GetMapping("/deleteFromDB")
+    public String borrar(@RequestParam("id") Integer id) {
+        imageRepository.delete(imageRepository.getById(id));
+        return "redirect:/blob/lista";
     }
 }

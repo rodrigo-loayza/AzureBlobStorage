@@ -17,13 +17,10 @@
             <div class="mb-3">
                 <label for="file" class="form-label">Imagen</label>
                 <input type="file" class="form-control" id="file" name="file" accept="image/jpg, image/jpeg, image/png">
-                <input type="file" name="my_file[]" multiple>
-                <select name="jajaja" id="jaja" multiple>
-                    <option value="1">TEST1</option>
-                    <option value="2">TEST2</option>
-                    <option value="3">TEST3</option>
-                    <option value="4">TEST4</option>
-                </select>
+            </div>
+            <div class="mb-3">
+                <label for="files" class="form-label">Varias imagenes</label>
+                <input type="file" class="form-control" name="my_files[]" multiple id="files">
             </div>
             <button type="submit" class="btn btn-primary">Guardar</button>
         </form>
