@@ -8,6 +8,7 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.*;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
+import com.example.azurestorage.controller.BlobController;
 import com.example.azurestorage.dto.BlobData;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -99,79 +100,6 @@ public class AzureBlobStorageService {
         }
     }
 
-    /* Método que recibe el archivo y retorna el link del blob en la nube */
-    public boolean subirArchivo(MultipartFile file, BlobData blobData, String name) {
-        BlobContainerClient blobContainer = containerClient();
-        if (blobContainer != null && file != null) {
-            /*
-             * Valida que el archivo sea una imagen
-             */
-            ArrayList<String> typeList = new ArrayList<>(Arrays.asList("image/jpg", "image/jpeg", "image/png"));
-            if (!typeList.contains(file.getContentType())) {
-                System.out.println("El archivo subido no es una imagen.");
-                return false;
-            }
-            /*
-             * Obtiene la extensión del archivo subido y genera el nuevo nombre
-             */
-            String fileName = file.getOriginalFilename();
-            assert fileName != null;
-            String fileExtension = fileName.substring(fileName.lastIndexOf("."));
-            System.out.println("Extension del archivo a subir: " + fileExtension);
-            blobData.setFileName(name + fileExtension);
-
-            try {
-                /*
-                 * Create a client that references a to-be-created blob in your Azure Storage account's container.
-                 * This returns a BlockBlobClient object that wraps the blob's endpoint, credential and a request pipeline
-                 * (inherited from containerClient). Note that blob names can be mixed case.
-                 */
-                BlobClient blobClient = blobContainer.getBlobClient(blobData.getFileName());
-                /*
-                 * Create a blob with blob's blobMetadata, BlobHttpHeaders and BlobRequestConditions
-                 */
-                Map<String, String> blobMetadata = Collections.singletonMap("myblobmetadata", "sample");
-                BlobHttpHeaders httpHeaders = new BlobHttpHeaders()
-                        .setContentDisposition("attachment")
-                        .setContentType(file.getContentType())
-                        /*
-                         * Send an MD5 hash of the content to be validated by the service.
-                         */
-                        .setContentMd5(MessageDigest.getInstance("MD5").digest(file.getBytes()));
-                BlobRequestConditions requestConditions = new BlobRequestConditions().setIfNoneMatch("*");
-
-                /*
-                 * Data which will upload to block blob and extra configs
-                 */
-                BlobParallelUploadOptions options = new BlobParallelUploadOptions(file.getInputStream());
-                options.setComputeMd5(true);
-                options.setHeaders(httpHeaders);
-                options.setMetadata(blobMetadata);
-                options.setRequestConditions(requestConditions);
-
-                /*
-                 * Creates a new blob, or updates the content of an existing blob. (En este caso lo creo porque se
-                 * configuro un setIfNoneMatch en las requestConditions.
-                 */
-                Response<BlockBlobItem> blobItem = blobClient.uploadWithResponse(options, null, Context.NONE);
-                blobData.setFileUrl(blobClient.getBlobUrl());
-
-                /*
-                 * Generate thumbnail
-                 */
-                genThumbnail(blobData, file, blobContainer);
-
-                return true;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
     public boolean borrarArchivoPorNombre(String name) {
         BlobContainerClient blobContainer = containerClient();
         if (blobContainer != null) {
@@ -193,20 +121,19 @@ public class AzureBlobStorageService {
     }
 
     /*
-     * Generates and uploads thumbnail, then sets its url
+     * Generates and uploads thumbnail, then sets thumbnail url to blobData object
      */
-    public void genThumbnail(BlobData blobData, MultipartFile tmpMultipart, BlobContainerClient blobContainer) {
+    public boolean genThumbnail(BlobContainerClient blobContainer, MultipartFile tmpMultipart, BlobData blobData, int[] size) {
         try {
-            BufferedImage img = new BufferedImage(teatroSize[0], teatroSize[1], BufferedImage.TYPE_INT_RGB);
+            BufferedImage img = new BufferedImage(size[0], size[1], BufferedImage.TYPE_INT_RGB);
             BufferedImage read = ImageIO.read(tmpMultipart.getInputStream());
             img.createGraphics().drawImage(
-                    read.getScaledInstance(teatroSize[0], teatroSize[1], Image.SCALE_SMOOTH), 0, 0, null);
+                    read.getScaledInstance(size[0], size[1], Image.SCALE_SMOOTH), 0, 0, null);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(img, "jpg", baos);
             InputStream bais = new ByteArrayInputStream(baos.toByteArray());
 
             String originFileName = blobData.getFileName();
-            System.out.println(originFileName);
             String blobThumbnail = originFileName.substring(0, originFileName.lastIndexOf(".")) + "_thumbnail.jpg";
             BlobClient blobClient = blobContainer.getBlobClient(blobThumbnail);
 
@@ -215,7 +142,6 @@ public class AzureBlobStorageService {
             BlobHttpHeaders httpHeaders = new BlobHttpHeaders()
                     .setContentDisposition("attachment")
                     .setContentType("image/jpeg")
-//                    .setContentMd5(MessageDigest.getInstance("MD5").digest(bais.readAllBytes()));
                     .setContentMd5(MessageDigest.getInstance("MD5").digest(baos.toByteArray()));
 
             BlobRequestConditions requestConditions = new BlobRequestConditions().setIfNoneMatch("*");
@@ -234,20 +160,118 @@ public class AzureBlobStorageService {
             baos.close();
             bais.close();
 
+            return true;
+
         } catch (IOException | NoSuchAlgorithmException e) {
             e.printStackTrace();
-            //TODO: Gatitos
+            return false;
         }
-//        switch (option) {
-//            case "teatro":
-//
-//
-//                break;
-//            case "obra":
-//                break;
-//            default:
-//                break;
-//        }
+    }
+
+    /*
+     * Sube la imagen después de validar que sea una y que tenga extensión correcta, además genera un thumbnail
+     * si se desea de acuerdo al tipo
+     */
+    public boolean uploadImage(MultipartFile file, BlobData blobData, String name, Boolean genThumb, String sizeOption) {
+        BlobContainerClient blobContainer = containerClient();
+        if (blobContainer != null && file != null) {
+            if (!isImage(file)) return false;
+
+            String fileExtension = getFileExtension(file).orElse(null);
+            if (fileExtension == null) return false;
+            blobData.setFileName(name + fileExtension);
+
+            try {
+                if (genThumb) {
+                    switch (sizeOption) {
+                        case "teatro":
+                            if (!genThumbnail(blobContainer, file, blobData, teatroSize)) return false;
+                            break;
+                        case "obra":
+                            if (!genThumbnail(blobContainer, file, blobData, obraSize)) return false;
+                            break;
+                        default:
+                            return false;
+                    }
+                }
+
+                String imgUrl = upload(blobContainer, file, blobData.getFileName());
+                if (imgUrl == null) return false;
+                blobData.setFileUrl(imgUrl);
+
+                return true;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+
+        } else {
+            return false;
+        }
+    }
+
+    /*
+     * Valida que el archivo sea una imagen
+     */
+    public boolean isImage(MultipartFile file) {
+        return Arrays.asList("image/jpg", "image/jpeg", "image/png").contains(file.getContentType());
+    }
+
+    /*
+     * Obtiene la extensión del archivo a subir
+     */
+    public Optional<String> getFileExtension(MultipartFile file) {
+        return file.getOriginalFilename() != null
+                ? Optional.of(file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".")))
+                : Optional.empty();
+    }
+
+    /*
+     * Sube el archivo al blob container y devuelve el url
+     */
+    public String upload(BlobContainerClient blobContainer, MultipartFile file, String name) {
+        try {
+            /*
+             * Create a client that references a to-be-created blob in your Azure Storage account's container.
+             * This returns a BlockBlobClient object that wraps the blob's endpoint, credential and a request pipeline
+             * (inherited from containerClient). Note that blob names can be mixed case.
+             */
+            BlobClient blobClient = blobContainer.getBlobClient(name);
+            /*
+             * Create a blob with blob's blobMetadata, BlobHttpHeaders and BlobRequestConditions
+             */
+            Map<String, String> blobMetadata = Collections.singletonMap("myblobmetadata", "sample");
+            BlobHttpHeaders httpHeaders = new BlobHttpHeaders()
+                    .setContentDisposition("attachment")
+                    .setContentType(file.getContentType())
+                    /*
+                     * Send an MD5 hash of the content to be validated by the service.
+                     */
+                    .setContentMd5(MessageDigest.getInstance("MD5").digest(file.getBytes()));
+            BlobRequestConditions requestConditions = new BlobRequestConditions().setIfNoneMatch("*");
+
+            /*
+             * Data which will upload to block blob and extra configs
+             */
+            BlobParallelUploadOptions options = new BlobParallelUploadOptions(file.getInputStream());
+            options.setComputeMd5(true);
+            options.setHeaders(httpHeaders);
+            options.setMetadata(blobMetadata);
+            options.setRequestConditions(requestConditions);
+
+            /*
+             * Creates a new blob, or updates the content of an existing blob. (En este caso lo creo porque se
+             * configuro un setIfNoneMatch en las requestConditions.
+             */
+            blobClient.uploadWithResponse(options, null, Context.NONE);
+
+            return blobClient.getBlobUrl();
+
+        } catch (NoSuchAlgorithmException | IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 }

@@ -41,7 +41,7 @@ public class BlobController {
                           @RequestParam(value = "my_files[]", required = false) MultipartFile[] multipartFiles) throws IOException {
         String fileName = "img_" + UUID.randomUUID();
         BlobData blobData = new BlobData();
-        if (azureBlobStorageService.subirArchivo(file, blobData, fileName)) {
+        if (azureBlobStorageService.uploadImage(file, blobData, fileName, true, "teatro")) {
             image.setImages(blobData.getThumbnailUrl());
             imageRepository.save(image);
             return "redirect:/blob/lista";
