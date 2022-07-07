@@ -9,8 +9,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Controller
@@ -36,19 +38,26 @@ public class BlobController {
     }
 
     @PostMapping("/guardar")
-    public String guardar(Image image,
-                          @RequestParam(value = "file", required = false) MultipartFile file,
+    public String guardar(Image image, RedirectAttributes attr,
+                          @RequestParam(value = "file_obra", required = false) MultipartFile fileObra,
+                          @RequestParam(value = "file_teatro", required = false) MultipartFile fileTeatro,
                           @RequestParam(value = "my_files[]", required = false) MultipartFile[] multipartFiles) throws IOException {
-        String fileName = "img_" + UUID.randomUUID();
+        ArrayList<String> errors = new ArrayList<>();
         BlobData blobData = new BlobData();
-        if (azureBlobStorageService.uploadImage(file, blobData, fileName, true, "obra")) {
-            image.setImages(blobData.getThumbnailUrl());
-            imageRepository.save(image);
+        if (fileObra != null && azureBlobStorageService.uploadImage(fileObra, blobData, "img_" + UUID.randomUUID(), true, "obra")) {
+            Image imgObra = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
+            imageRepository.save(imgObra);
         } else {
-            System.out.println("ERROR EN LA SUBIDA");
+            errors.add("ERROR EN LA SUBIDA DE OBRA");
         }
-
-        return "redirect:/blob/lista";
+        if (fileTeatro != null && azureBlobStorageService.uploadImage(fileTeatro, blobData, "img_" + UUID.randomUUID(), true, "teatro")) {
+            Image imgTeatro = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
+            imageRepository.save(imgTeatro);
+        } else {
+            errors.add("ERROR EN LA SUBIDA DE TEATRO");
+        }
+        if (!errors.isEmpty()) attr.addFlashAttribute("errors", errors);
+        return "redirect:/blob/frm";
 
 //        if (imgUrl != null) {
 //            image.setImages(imgUrl);

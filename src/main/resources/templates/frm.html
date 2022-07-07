@@ -10,13 +10,18 @@
     <body class="container my-2">
         <a class="btn btn-outline-primary my-3" th:href="@{/blob/lista}">Lista Imagenes</a>
         <form method="post" th:action="@{/blob/guardar}" enctype="multipart/form-data">
+            <div class="my-2 text-danger" th:if="${errors != null}" th:each="e : ${errors}" th:text="${e}"></div>
             <div class="mb-3">
                 <label for="descripcion" class="form-label">Descripcion</label>
                 <input type="text" class="form-control" id="descripcion" name="descripcion">
             </div>
             <div class="mb-3">
-                <label for="file" class="form-label">Imagen</label>
-                <input type="file" class="form-control" id="file" name="file" accept="image/jpg, image/jpeg, image/png">
+                <label for="file_teatro" class="form-label">Teatro</label>
+                <input type="file" class="form-control" id="file_teatro" name="file_teatro" accept="image/jpg, image/jpeg, image/png">
+            </div>
+            <div class="mb-3">
+                <label for="file_obra" class="form-label">Obra</label>
+                <input type="file" class="form-control" id="file_obra" name="file_obra" accept="image/jpg, image/jpeg, image/png">
             </div>
             <div class="mb-3">
                 <label for="files" class="form-label">Varias imagenes</label>

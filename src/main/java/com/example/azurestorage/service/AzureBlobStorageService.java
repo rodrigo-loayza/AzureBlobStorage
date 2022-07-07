@@ -8,7 +8,6 @@ import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.*;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
-import com.example.azurestorage.controller.BlobController;
 import com.example.azurestorage.dto.BlobData;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,10 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -28,11 +24,19 @@ import java.util.*;
 @Service
 public class AzureBlobStorageService {
 
-    private static final int[] teatroThumbSize = {300, 300};
-    private static final int[] obraThumbSize = {300, 300};
+    /*
+     * -- Teatro aspect ratio validation: [1.5, 2.17]; thumb = 495 x 225 px; min_size = 530 x 350 px
+     * -- Obra aspect ratio validation: [0.6, 0.76]; thumb = 308 x 410 px; min_size = 335 x 475 px
+    */
 
-    private static final int[] teatroMinSize = {200, 200};
-    private static final int[] obraMinSize = {200, 200};
+    private static final int[] teatroThumbSize = {495, 225};
+    private static final int[] obraThumbSize = {308, 410};
+
+    private static final int[] teatroMinSize = {530, 350};
+    private static final int[] obraMinSize = {308, 410};
+
+    private static final double[] teatroAspectRatio = {1.5, 2.17};
+    private static final double[] obraAspectRatio = {0.6, 0.76};
 
     /* Parametros de conexion, los obtiene del application.properties */
     @Value("${spring.cloud.azure.storage.blob.connection-string}")
@@ -227,31 +231,28 @@ public class AzureBlobStorageService {
      */
     public boolean isValidSize(MultipartFile file, String option) {
         try {
-            BufferedImage img = ImageIO.read(file.getInputStream());
+            InputStream fileIS = file.getInputStream();
+            BufferedImage img = ImageIO.read(fileIS);
             int width = img.getWidth();
             int height = img.getHeight();
+            double ratio = (double) width / height;
 
             int[] minSize;
-            boolean validObraRatio = false;
+            boolean validRatio = false;
             switch (option) {
                 case "teatro":
                     minSize = teatroMinSize;
+                    validRatio = teatroAspectRatio[0] <= ratio && ratio <= teatroAspectRatio[1];
                     break;
                 case "obra":
                     minSize = obraMinSize;
-                    double ratio = (double) width/height;
-                    validObraRatio = 0.6 <= ratio && ratio <= 0.714;
+                    validRatio = obraAspectRatio[0] <= ratio && ratio <= obraAspectRatio[1];
                     break;
                 default:
                     return false;
             }
 
-            if (width >= minSize[0] && height >= minSize[1]) {
-                if (option.equals("obra")) return validObraRatio;
-                return true;
-            } else {
-                return false;
-            }
+            return width >= minSize[0] && height >= minSize[1] && validRatio;
 
         } catch (IOException e) {
             e.printStackTrace();

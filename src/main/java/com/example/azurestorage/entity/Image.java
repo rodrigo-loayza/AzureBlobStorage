@@ -1,9 +1,15 @@
 package com.example.azurestorage.entity;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
 import javax.persistence.*;
 
 @Entity
 @Table(name = "images")
+@Getter
+@Setter
 public class Image {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,28 +22,12 @@ public class Image {
     @Column(name = "images")
     private String images;
 
-    public Integer getId() {
-        return id;
+    public Image() {
+
     }
 
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public void setDescripcion(String descripcion) {
+    public Image(String descripcion, String images) {
         this.descripcion = descripcion;
-    }
-
-    public String getImages() {
-        return images;
-    }
-
-    public void setImages(String images) {
         this.images = images;
     }
-
 }
