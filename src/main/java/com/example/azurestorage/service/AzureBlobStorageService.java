@@ -9,6 +9,9 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.*;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 import com.example.azurestorage.dto.BlobData;
+import net.coobird.thumbnailator.Thumbnailator;
+//import org.imgscalr.Scalr;
+import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,7 +29,7 @@ public class AzureBlobStorageService {
 
     /*
      * -- Teatro aspect ratio validation: [1.5, 2.17]; thumb = 495 x 225 px; min_size = 530 x 350 px
-     * -- Obra aspect ratio validation: [0.6, 0.76]; thumb = 308 x 410 px; min_size = 335 x 475 px
+     * -- Obra aspect ratio validation: [0.6, 0.77]; thumb = 308 x 410 px; min_size = 335 x 475 px
     */
 
     private static final int[] teatroThumbSize = {495, 225};
@@ -36,7 +39,7 @@ public class AzureBlobStorageService {
     private static final int[] obraMinSize = {308, 410};
 
     private static final double[] teatroAspectRatio = {1.5, 2.17};
-    private static final double[] obraAspectRatio = {0.6, 0.76};
+    private static final double[] obraAspectRatio = {0.6, 0.77};
 
     /* Parametros de conexion, los obtiene del application.properties */
     @Value("${spring.cloud.azure.storage.blob.connection-string}")
@@ -107,11 +110,31 @@ public class AzureBlobStorageService {
         }
     }
 
+    /* Delete block blob by name */
     public boolean borrarArchivoPorNombre(String name) {
         BlobContainerClient blobContainer = containerClient();
         if (blobContainer != null) {
             /* Delete block blob by name */
-            blobContainer.getBlobClient(name).delete();
+            BlobClient blobClient = blobContainer.getBlobClient(name);
+            if (blobClient.exists()) blobClient.delete();
+            else return false;
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /* Delete block blob by url */
+    public boolean borrarArchivoPorUrl(String url) {
+        BlobContainerClient blobContainer = containerClient();
+        if (blobContainer != null) {
+            String[] urlList = url.split("/");
+            String filename = urlList[urlList.length - 1];
+            BlobClient blobClient = blobContainer.getBlobClient(filename);
+            if (blobClient.exists()) blobClient.delete();
+            else return false;
+
             return true;
         } else {
             return false;
@@ -132,13 +155,15 @@ public class AzureBlobStorageService {
      */
     public boolean genThumbnail(BlobContainerClient blobContainer, MultipartFile tmpMultipart, BlobData blobData, int[] size) {
         try {
-            BufferedImage img = new BufferedImage(size[0], size[1], BufferedImage.TYPE_INT_RGB);
-            BufferedImage read = ImageIO.read(tmpMultipart.getInputStream());
-            img.createGraphics().drawImage(
-                    read.getScaledInstance(size[0], size[1], Image.SCALE_SMOOTH), 0, 0, null);
+            BufferedImage img = ImageIO.read(tmpMultipart.getInputStream());
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, "jpg", baos);
-            InputStream bais = new ByteArrayInputStream(baos.toByteArray());
+            Thumbnails.of(img)
+                    .size(size[0], size[1])
+                    .outputFormat("JPEG")
+                    .outputQuality(1)
+                    .toOutputStream(baos);
+            byte[] data = baos.toByteArray();
+            ByteArrayInputStream bais = new ByteArrayInputStream(data);
 
             String originFileName = blobData.getFileName();
             String blobThumbnail = originFileName.substring(0, originFileName.lastIndexOf(".")) + "_thumbnail.jpg";
@@ -166,6 +191,7 @@ public class AzureBlobStorageService {
             // Closes stream
             baos.close();
             bais.close();
+            img.flush();
 
             return true;
 

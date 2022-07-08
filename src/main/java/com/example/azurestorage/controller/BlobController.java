@@ -39,25 +39,32 @@ public class BlobController {
 
     @PostMapping("/guardar")
     public String guardar(Image image, RedirectAttributes attr,
-                          @RequestParam(value = "file_obra", required = false) MultipartFile fileObra,
-                          @RequestParam(value = "file_teatro", required = false) MultipartFile fileTeatro,
+                          @RequestParam(value = "file_obra") MultipartFile fileObra,
+                          @RequestParam(value = "file_teatro") MultipartFile fileTeatro,
                           @RequestParam(value = "my_files[]", required = false) MultipartFile[] multipartFiles) throws IOException {
         ArrayList<String> errors = new ArrayList<>();
         BlobData blobData = new BlobData();
-        if (fileObra != null && azureBlobStorageService.uploadImage(fileObra, blobData, "img_" + UUID.randomUUID(), true, "obra")) {
-            Image imgObra = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
-            imageRepository.save(imgObra);
-        } else {
-            errors.add("ERROR EN LA SUBIDA DE OBRA");
+        if (fileObra != null && fileObra.getSize() != 0) {
+            if (azureBlobStorageService.uploadImage(fileObra, blobData, "img_" + UUID.randomUUID(), true, "obra")) {
+                Image imgObra = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
+                imageRepository.save(imgObra);
+            } else {
+                errors.add("ERROR EN LA SUBIDA DE OBRA");
+            }
         }
-        if (fileTeatro != null && azureBlobStorageService.uploadImage(fileTeatro, blobData, "img_" + UUID.randomUUID(), true, "teatro")) {
-            Image imgTeatro = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
-            imageRepository.save(imgTeatro);
-        } else {
-            errors.add("ERROR EN LA SUBIDA DE TEATRO");
+        if (fileTeatro != null && fileTeatro.getSize() != 0) {
+            if (azureBlobStorageService.uploadImage(fileTeatro, blobData, "img_" + UUID.randomUUID(), true, "teatro")) {
+                Image imgTeatro = new Image(image.getDescripcion(), blobData.getThumbnailUrl());
+                imageRepository.save(imgTeatro);
+            } else {
+                errors.add("ERROR EN LA SUBIDA DE TEATRO");
+            }
         }
-        if (!errors.isEmpty()) attr.addFlashAttribute("errors", errors);
-        return "redirect:/blob/frm";
+        if (!errors.isEmpty()) {
+            attr.addFlashAttribute("errors", errors);
+            return "redirect:/blob/frm";
+        }
+        return "redirect:/blob/lista";
 
 //        if (imgUrl != null) {
 //            image.setImages(imgUrl);
