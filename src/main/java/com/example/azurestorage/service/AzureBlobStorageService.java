@@ -9,16 +9,18 @@ import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.*;
 import com.azure.storage.blob.options.BlobParallelUploadOptions;
 import com.example.azurestorage.dto.BlobData;
-import net.coobird.thumbnailator.Thumbnailator;
 //import org.imgscalr.Scalr;
 import net.coobird.thumbnailator.Thumbnails;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
+import java.awt.image.Raster;
 import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -159,6 +161,7 @@ public class AzureBlobStorageService {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             Thumbnails.of(img)
                     .size(size[0], size[1])
+                    .keepAspectRatio(false)
                     .outputFormat("JPEG")
                     .outputQuality(1)
                     .toOutputStream(baos);
@@ -249,7 +252,13 @@ public class AzureBlobStorageService {
      * Valida que el archivo sea una imagen
      */
     public boolean isImage(MultipartFile file) {
-        return Arrays.asList("image/jpg", "image/jpeg", "image/png").contains(file.getContentType());
+        Tika tika = new Tika();
+        try {
+            return Arrays.asList("image/jpg", "image/jpeg", "image/png").contains(tika.detect(file.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /*
@@ -259,6 +268,33 @@ public class AzureBlobStorageService {
         try {
             InputStream fileIS = file.getInputStream();
             BufferedImage img = ImageIO.read(fileIS);
+
+//            if (img == null) {
+//                //Find a suitable ImageReader
+//                Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JPEG");
+//                ImageReader reader = null;
+//                while(readers.hasNext()) {
+//                    reader = readers.next();
+//                    if(reader.canReadRaster()) {
+//                        break;
+//                    }
+//                }
+//
+//                //Stream the image file (the original CMYK image)
+////                ImageInputStream input = ImageIO.createImageInputStream(file.getBytes());
+//                reader.setInput(fileIS);
+//
+//                //Read the image raster
+//                Raster raster = reader.readRaster(0, null);
+//
+//                //Create a new RGB image
+//                img = new BufferedImage(raster.getWidth(), raster.getHeight(),
+//                        BufferedImage.TYPE_INT_BGR);
+//
+//                //Fill the new image with the old raster
+//                img.getRaster().setRect(raster);
+//            }
+
             int width = img.getWidth();
             int height = img.getHeight();
             double ratio = (double) width / height;
